@@ -2,9 +2,14 @@
 MCP Automation Tools
 ====================
 
-Core automation tools for OS interaction.
-Primary: pywinauto
-Fallback: pyautogui + OpenCV
+Core automation tools for OS interaction with platform-aware automation.
+
+Platform Support:
+- Windows: pywinauto (primary), pyautogui + opencv (fallback)
+- macOS: pyobjc/applescript (primary), pyautogui + opencv (fallback)  
+- Linux: xdotool/atspi (primary), pyautogui + opencv (fallback)
+
+Vision Mode: opencv + pyautogui for pixel-based matching (user-enabled)
 """
 
 import logging
@@ -14,192 +19,231 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from .platform_automation import PlatformAutomation, AUTOMATION_LIBS
+from .action_logger import ActionLogger
+
 logger = logging.getLogger(__name__)
 
-# Try to import automation libraries
-try:
-    import pyautogui
-    PYAUTOGUI_AVAILABLE = True
-except ImportError:
-    PYAUTOGUI_AVAILABLE = False
-    logger.warning("pyautogui not available - UI automation will be limited")
-
-try:
-    from pywinauto import Application
-    PYWINAUTO_AVAILABLE = True
-except ImportError:
-    PYWINAUTO_AVAILABLE = False
-    logger.warning("pywinauto not available - using fallback automation")
+# Global automation instance (can be set with vision mode)
+_automation_instance = None
+_action_logger = None
 
 
-def open_app(name: str, wait_time: int = 2) -> Dict[str, Any]:
+def set_vision_mode(enabled: bool):
     """
-    Open an application by name.
+    Enable or disable vision mode.
+    
+    Args:
+        enabled: If True, use opencv + pyautogui for pixel matching
+    """
+    global _automation_instance
+    _automation_instance = PlatformAutomation(vision_mode=enabled)
+    logger.info("Vision mode %s", "enabled" if enabled else "disabled")
+
+
+def get_automation() -> PlatformAutomation:
+    """Get or create automation instance."""
+    global _automation_instance
+    if _automation_instance is None:
+        _automation_instance = PlatformAutomation(vision_mode=False)
+    return _automation_instance
+
+
+def get_logger() -> ActionLogger:
+    """Get or create action logger."""
+    global _action_logger
+    if _action_logger is None:
+        _action_logger = ActionLogger()
+    return _action_logger
+
+
+def open_app(name: str, wait_time: int = 2, log_action: bool = True) -> Dict[str, Any]:
+    """
+    Open an application by name using platform-aware automation.
     
     Args:
         name: Application name or path to executable
         wait_time: Seconds to wait after launching
+        log_action: Whether to log this action
         
     Returns:
         Dict with success status and details
     """
+    automation = get_automation()
+    action_logger = get_logger() if log_action else None
+    
     try:
-        logger.info("Opening application: %s", name)
+        logger.info("Opening application: %s (method: %s)", name, automation.get_primary_method())
         
-        # Try different methods based on platform
+        # Use platform-specific method
         if sys.platform == "win32":
-            # Windows
-            if PYWINAUTO_AVAILABLE:
-                try:
-                    app = Application(backend="uia").start(name)
-                    import time
-                    time.sleep(wait_time)
-                    return {
-                        "success": True,
-                        "app": name,
-                        "method": "pywinauto",
-                        "pid": app.process if hasattr(app, 'process') else None
-                    }
-                except Exception as e:
-                    logger.warning("pywinauto failed, trying subprocess: %s", str(e))
-            
-            # Fallback to subprocess
-            subprocess.Popen(name, shell=True)
-            import time
-            time.sleep(wait_time)
-            return {
-                "success": True,
-                "app": name,
-                "method": "subprocess",
-                "note": "Application launched, but process handle not available"
-            }
-        
+            result = automation.open_app_windows(name, wait_time)
         elif sys.platform == "darwin":
-            # macOS
-            subprocess.Popen(["open", "-a", name])
-            import time
-            time.sleep(wait_time)
-            return {
-                "success": True,
-                "app": name,
-                "method": "open",
-                "platform": "macOS"
-            }
-        
+            result = automation.open_app_macos(name, wait_time)
         else:
-            # Linux
-            subprocess.Popen([name])
-            import time
-            time.sleep(wait_time)
-            return {
-                "success": True,
-                "app": name,
-                "method": "subprocess",
-                "platform": "Linux"
-            }
+            result = automation.open_app_linux(name, wait_time)
+        
+        # Log action
+        if action_logger:
+            action_logger.log_action(
+                action_type="open_app",
+                target=name,
+                method=result.get("method", "unknown"),
+                result=result,
+                take_screenshots=True
+            )
+        
+        return result
     
     except Exception as e:
         logger.error("Failed to open application: %s", str(e))
-        return {
+        result = {
             "success": False,
             "error": str(e),
             "app": name
         }
+        
+        if action_logger:
+            action_logger.log_action(
+                action_type="open_app",
+                target=name,
+                method="error",
+                result=result,
+                take_screenshots=False
+            )
+        
+        return result
 
 
-def click_ui(label: str, confidence: float = 0.8) -> Dict[str, Any]:
+def click_ui(
+    label: str,
+    confidence: float = 0.8,
+    template_path: Optional[str] = None,
+    log_action: bool = True
+) -> Dict[str, Any]:
     """
-    Click a UI element by label or visual match.
+    Click a UI element by label using platform-aware automation.
     
     Args:
         label: Text label or description of UI element
-        confidence: Confidence threshold for image matching (0.0-1.0)
+        confidence: Confidence threshold for vision mode matching (0.0-1.0)
+        template_path: Path to template image for vision mode
+        log_action: Whether to log this action
         
     Returns:
         Dict with success status and details
     """
+    automation = get_automation()
+    action_logger = get_logger() if log_action else None
+    
     try:
-        logger.info("Clicking UI element: %s", label)
+        logger.info("Clicking UI element: %s (method: %s)", label, automation.get_primary_method())
         
-        if not PYAUTOGUI_AVAILABLE:
-            return {
-                "success": False,
-                "error": "pyautogui not available",
-                "label": label,
-                "note": "Install pyautogui to enable UI clicking"
-            }
+        # Use platform-specific or vision mode method
+        if automation.vision_mode:
+            result = automation.click_ui_vision(label, template_path, confidence)
+        elif sys.platform == "win32":
+            result = automation.click_ui_windows(label)
+        elif sys.platform == "darwin":
+            result = automation.click_ui_macos(label)
+        else:
+            result = automation.click_ui_linux(label)
         
-        # Try to find and click the element
-        # First attempt: locate by text/image
-        try:
-            # This is a placeholder - real implementation would need image templates
-            # or OCR to find UI elements
-            location = pyautogui.locateOnScreen(label, confidence=confidence)
-            if location:
-                center = pyautogui.center(location)
-                pyautogui.click(center)
-                return {
-                    "success": True,
-                    "label": label,
-                    "method": "image_match",
-                    "position": {"x": center.x, "y": center.y}
-                }
-        except Exception:
-            pass
+        # Log action
+        if action_logger:
+            action_logger.log_action(
+                action_type="click_ui",
+                target=label,
+                method=result.get("method", "unknown"),
+                result=result,
+                take_screenshots=True
+            )
         
-        # Fallback: use center click as demonstration
-        # In production, this would use OCR or template matching
-        return {
-            "success": False,
-            "error": "Element not found",
-            "label": label,
-            "note": "Could not locate UI element. Ensure templates are configured."
-        }
+        return result
     
     except Exception as e:
         logger.error("Failed to click UI element: %s", str(e))
-        return {
+        result = {
             "success": False,
             "error": str(e),
             "label": label
         }
+        
+        if action_logger:
+            action_logger.log_action(
+                action_type="click_ui",
+                target=label,
+                method="error",
+                result=result,
+                take_screenshots=True
+            )
+        
+        return result
 
 
-def type_text(text: str, interval: float = 0.05) -> Dict[str, Any]:
+def type_text(text: str, interval: float = 0.05, log_action: bool = True) -> Dict[str, Any]:
     """
     Type text at current cursor position.
     
     Args:
         text: Text to type
         interval: Delay between keystrokes in seconds
+        log_action: Whether to log this action
         
     Returns:
         Dict with success status and details
     """
+    action_logger = get_logger() if log_action else None
+    
     try:
         logger.info("Typing text: %s", text[:50])
         
-        if not PYAUTOGUI_AVAILABLE:
-            return {
+        # Use pyautogui for text typing (cross-platform)
+        if not AUTOMATION_LIBS.get("pyautogui"):
+            result = {
                 "success": False,
                 "error": "pyautogui not available",
                 "note": "Install pyautogui to enable text typing"
             }
+        else:
+            import pyautogui
+            pyautogui.write(text, interval=interval)
+            result = {
+                "success": True,
+                "text_length": len(text),
+                "interval": interval,
+                "method": "pyautogui"
+            }
         
-        pyautogui.write(text, interval=interval)
-        return {
-            "success": True,
-            "text_length": len(text),
-            "interval": interval,
-            "method": "pyautogui"
-        }
+        # Log action
+        if action_logger:
+            action_logger.log_action(
+                action_type="type_text",
+                target=f"text({len(text)} chars)",
+                method=result.get("method", "unknown"),
+                result=result,
+                take_screenshots=False  # Don't screenshot for typing (security)
+            )
+        
+        return result
     
     except Exception as e:
         logger.error("Failed to type text: %s", str(e))
-        return {
+        result = {
             "success": False,
             "error": str(e)
         }
+        
+        if action_logger:
+            action_logger.log_action(
+                action_type="type_text",
+                target="text",
+                method="error",
+                result=result,
+                take_screenshots=False
+            )
+        
+        return result
 
 
 def read_screen(region: Optional[Dict[str, int]] = None) -> Dict[str, Any]:

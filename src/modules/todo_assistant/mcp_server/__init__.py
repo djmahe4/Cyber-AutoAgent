@@ -9,7 +9,11 @@ Model Context Protocol (MCP) server providing OS automation tools:
 - read_screen: Extract text from screen
 - run_custom_script: Execute user-defined automation scripts
 
-Uses pywinauto as primary library with fallback to pyautogui + OpenCV.
+Platform-aware automation:
+- Windows: pywinauto
+- macOS: pyobjc/applescript
+- Linux: xdotool/atspi
+- Vision Mode: opencv + pyautogui (user-enabled)
 """
 
 from .server import MCPServer
@@ -18,8 +22,13 @@ from .tools import (
     click_ui,
     type_text,
     read_screen,
-    run_custom_script
+    run_custom_script,
+    set_vision_mode,
+    get_automation,
+    get_logger
 )
+from .platform_automation import PlatformAutomation
+from .action_logger import ActionLogger
 
 __all__ = [
     "MCPServer",
@@ -27,5 +36,10 @@ __all__ = [
     "click_ui", 
     "type_text",
     "read_screen",
-    "run_custom_script"
+    "run_custom_script",
+    "set_vision_mode",
+    "get_automation",
+    "get_logger",
+    "PlatformAutomation",
+    "ActionLogger"
 ]

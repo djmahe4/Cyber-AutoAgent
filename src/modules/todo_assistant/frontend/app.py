@@ -56,6 +56,12 @@ def init_session_state():
     
     if "vibe_code" not in st.session_state:
         st.session_state.vibe_code = ""
+    
+    if "vision_mode" not in st.session_state:
+        st.session_state.vision_mode = False
+    
+    if "action_logs" not in st.session_state:
+        st.session_state.action_logs = []
 
 
 def render_header():
@@ -88,6 +94,23 @@ def render_sidebar():
             value=st.session_state.debug_mode,
             help="Show detailed logs and execution traces"
         )
+        
+        # Vision Mode toggle
+        vision_mode = st.checkbox(
+            "🔍 Vision Mode / Pixel-Click Fallback",
+            value=st.session_state.vision_mode,
+            help="Use OpenCV + PyAutoGUI for pixel-based UI element detection"
+        )
+        
+        if vision_mode != st.session_state.vision_mode:
+            st.session_state.vision_mode = vision_mode
+            # Update MCP server to use vision mode
+            try:
+                from modules.todo_assistant.mcp_server import tools
+                tools.set_vision_mode(vision_mode)
+                st.success(f"Vision mode {'enabled' if vision_mode else 'disabled'}")
+            except Exception as e:
+                st.error(f"Failed to set vision mode: {str(e)}")
         
         st.divider()
         
@@ -342,26 +365,300 @@ def run_custom_script_ui(script_path):
 
 
 def render_debug_section():
-    """Render debug and logs section."""
-    if not st.session_state.debug_mode:
+    """Render enhanced debug dashboard with logs, screenshots, and timeline."""
+    st.header("🐛 Debug Dashboard")
+    
+    # Get action logger if available
+    try:
+        from modules.todo_assistant.mcp_server import tools
+        action_logger = tools.get_logger()
+        log_entries = action_logger.get_session_log()
+        summary = action_logger.get_action_summary()
+    except Exception as e:
+        st.error(f"Failed to load action logger: {str(e)}")
+        log_entries = []
+        summary = {}
+    
+    # Summary metrics
+    st.subheader("📊 Session Summary")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Total Actions", summary.get("total_actions", 0))
+    with col2:
+        st.metric("Successful", summary.get("successful_actions", 0))
+    with col3:
+        st.metric("Failed", summary.get("failed_actions", 0))
+    with col4:
+        st.metric("Anomalies", summary.get("anomalies", 0))
+    
+    st.divider()
+    
+    # Tab interface for different views
+    debug_tab1, debug_tab2, debug_tab3, debug_tab4, debug_tab5 = st.tabs([
+        "📁 Run Log Timeline",
+        "🖼️ Screenshots",
+        "🕒 Execution Trace",
+        "🧠 Platform Info",
+        "🛑 Controls"
+    ])
+    
+    with debug_tab1:
+        render_run_log_timeline(log_entries)
+    
+    with debug_tab2:
+        render_screenshot_viewer(log_entries, summary)
+    
+    with debug_tab3:
+        render_execution_trace(log_entries)
+    
+    with debug_tab4:
+        render_platform_info()
+    
+    with debug_tab5:
+        render_debug_controls()
+
+
+def render_run_log_timeline(log_entries):
+    """Render run log timeline with all actions."""
+    st.subheader("📁 Action Timeline")
+    
+    if not log_entries:
+        st.info("No actions logged yet. Execute some tasks to see them here.")
         return
     
-    st.header("🐛 Debug Mode")
+    # Display entries in reverse chronological order
+    for entry in reversed(log_entries):
+        if entry.get("type") == "anomaly":
+            # Anomaly entry
+            with st.expander(
+                f"⚠️ ANOMALY: {entry.get('anomaly_type', 'Unknown')} - {entry.get('timestamp', '')}",
+                expanded=True
+            ):
+                st.error(entry.get("description", "No description"))
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.write("**Expected:**")
+                    st.code(str(entry.get("expected", "N/A")))
+                with col2:
+                    st.write("**Actual:**")
+                    st.code(str(entry.get("actual", "N/A")))
+                
+                if entry.get("screenshot"):
+                    try:
+                        from PIL import Image
+                        img = Image.open(entry["screenshot"])
+                        st.image(img, caption="Screenshot at anomaly", use_container_width=True)
+                    except Exception as e:
+                        st.error(f"Failed to load screenshot: {str(e)}")
+        else:
+            # Regular action entry
+            action_id = entry.get("action_id", "?")
+            action_type = entry.get("action_type", "unknown")
+            target = entry.get("target", "unknown")
+            timestamp = entry.get("timestamp", "")
+            success = entry.get("result", {}).get("success", False)
+            method = entry.get("method", "unknown")
+            
+            status_icon = "✅" if success else "❌"
+            
+            with st.expander(
+                f"{status_icon} #{action_id} - {action_type}({target}) - {timestamp}",
+                expanded=False
+            ):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.write(f"**Action:** {action_type}")
+                    st.write(f"**Target:** {target}")
+                    st.write(f"**Method:** {method}")
+                    st.write(f"**Status:** {'Success' if success else 'Failed'}")
+                
+                with col2:
+                    st.write("**Result:**")
+                    result_data = entry.get("result", {})
+                    if result_data.get("error"):
+                        st.error(result_data["error"])
+                    st.json(result_data.get("data", {}))
+                
+                # Show screenshots if available
+                screenshots = entry.get("screenshots", {})
+                if screenshots.get("after"):
+                    try:
+                        from PIL import Image
+                        img = Image.open(screenshots["after"])
+                        st.image(img, caption="After action", use_container_width=True)
+                    except Exception as e:
+                        st.text(f"Screenshot: {screenshots['after']}")
+
+
+def render_screenshot_viewer(log_entries, summary):
+    """Render screenshot viewer."""
+    st.subheader("🖼️ Screenshot Viewer")
     
-    # Execution log
-    st.subheader("Execution Log")
-    log = st.session_state.agent.mcp_server.get_execution_log()
+    screenshot_dir = summary.get("screenshot_dir")
+    if not screenshot_dir:
+        st.info("No screenshot directory available")
+        return
     
-    if log:
-        for i, entry in enumerate(reversed(log), 1):
-            with st.expander(f"#{i} - {entry['tool']}", expanded=False):
-                st.json(entry)
-    else:
-        st.info("No executions yet")
+    from pathlib import Path
+    screenshot_path = Path(screenshot_dir)
     
-    if st.button("🗑️ Clear Log"):
-        st.session_state.agent.mcp_server.clear_log()
-        st.rerun()
+    if not screenshot_path.exists():
+        st.info("Screenshot directory not found")
+        return
+    
+    # List all screenshots
+    screenshots = sorted(screenshot_path.glob("*.png"))
+    
+    if not screenshots:
+        st.info("No screenshots available yet")
+        return
+    
+    st.write(f"**Directory:** {screenshot_dir}")
+    st.write(f"**Total screenshots:** {len(screenshots)}")
+    
+    # Select screenshot to view
+    screenshot_names = [s.name for s in screenshots]
+    selected = st.selectbox("Select screenshot:", screenshot_names)
+    
+    if selected:
+        selected_path = screenshot_path / selected
+        try:
+            from PIL import Image
+            img = Image.open(selected_path)
+            st.image(img, caption=selected, use_container_width=True)
+            
+            # Show file info
+            st.text(f"Size: {selected_path.stat().st_size / 1024:.2f} KB")
+            st.text(f"Path: {selected_path}")
+        except Exception as e:
+            st.error(f"Failed to load screenshot: {str(e)}")
+
+
+def render_execution_trace(log_entries):
+    """Render execution trace with timing information."""
+    st.subheader("🕒 Execution Trace")
+    
+    if not log_entries:
+        st.info("No execution trace available yet")
+        return
+    
+    # Filter out anomalies for trace
+    action_entries = [e for e in log_entries if e.get("type") != "anomaly"]
+    
+    if not action_entries:
+        st.info("No actions in trace")
+        return
+    
+    # Create trace table
+    trace_data = []
+    for entry in action_entries:
+        trace_data.append({
+            "ID": entry.get("action_id", "?"),
+            "Timestamp": entry.get("timestamp", "")[:19],
+            "Action": entry.get("action_type", "?"),
+            "Target": entry.get("target", "?")[:30],
+            "Method": entry.get("method", "?"),
+            "Status": "✅ Success" if entry.get("result", {}).get("success") else "❌ Failed"
+        })
+    
+    st.dataframe(trace_data, use_container_width=True)
+    
+    # Show methods distribution
+    st.subheader("Methods Used")
+    methods = {}
+    for entry in action_entries:
+        method = entry.get("method", "unknown")
+        methods[method] = methods.get(method, 0) + 1
+    
+    if methods:
+        st.bar_chart(methods)
+
+
+def render_platform_info():
+    """Render platform and automation library information."""
+    st.subheader("🧠 Platform & Automation Info")
+    
+    try:
+        from modules.todo_assistant.mcp_server import tools
+        automation = tools.get_automation()
+        info = automation.get_automation_info()
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write("**Platform:**", info.get("platform", "Unknown"))
+            st.write("**Vision Mode:**", "✅ Enabled" if info.get("vision_mode") else "❌ Disabled")
+            st.write("**Primary Method:**", info.get("primary_method", "Unknown"))
+        
+        with col2:
+            st.write("**Available Methods:**")
+            for method in info.get("available_methods", []):
+                st.write(f"  • {method}")
+        
+        st.divider()
+        
+        st.subheader("Available Libraries")
+        libraries = info.get("libraries", {})
+        
+        for lib, available in libraries.items():
+            status = "✅ Available" if available else "❌ Not Available"
+            st.write(f"**{lib}:** {status}")
+    
+    except Exception as e:
+        st.error(f"Failed to get platform info: {str(e)}")
+
+
+def render_debug_controls():
+    """Render debug controls for interrupting and managing execution."""
+    st.subheader("🛑 Debug Controls")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("🗑️ Clear Execution Log", use_container_width=True):
+            try:
+                st.session_state.agent.mcp_server.clear_log()
+                st.success("Execution log cleared")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Failed to clear log: {str(e)}")
+    
+    with col2:
+        if st.button("📊 Export Session Log", use_container_width=True):
+            try:
+                from modules.todo_assistant.mcp_server import tools
+                action_logger = tools.get_logger()
+                summary = action_logger.get_action_summary()
+                
+                st.json(summary)
+                st.success(f"Log file: {summary.get('log_file')}")
+            except Exception as e:
+                st.error(f"Failed to export log: {str(e)}")
+    
+    st.divider()
+    
+    st.subheader("Switch to Vision Mode")
+    st.info("""
+    Vision Mode uses OpenCV + PyAutoGUI for pixel-based UI matching.
+    
+    **When to use:**
+    - Platform-specific tools aren't working
+    - Need precise pixel-level clicking
+    - Working with custom or non-standard UI elements
+    
+    **Requirements:**
+    - Template images for UI elements
+    - OpenCV and PyAutoGUI installed
+    
+    Toggle Vision Mode in the sidebar settings.
+    """)
+    
+    st.divider()
+    
+    st.subheader("Replay Actions")
+    st.info("Action replay feature coming soon - will allow replaying logged actions step by step.")
 
 
 def render_vibe_coding():

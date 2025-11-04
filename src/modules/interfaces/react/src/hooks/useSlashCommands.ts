@@ -102,6 +102,47 @@ export const useSlashCommands = () => {
           // Exit should be handled gracefully by useCommandHandler
           throw new Error('Exit command should be handled by useCommandHandler');
         }
+      },
+      // To-Do Assistant Commands
+      {
+        command: '/todo',
+        description: 'Add a desktop automation task',
+        action: () => {
+          throw new Error('Todo command should be handled by useCommandHandler');
+        },
+        args: ['task_description']
+      },
+      {
+        command: '/todo-list',
+        description: 'List all to-do tasks',
+        action: () => {
+          throw new Error('Todo-list command should be handled by useCommandHandler');
+        },
+        args: ['status?']
+      },
+      {
+        command: '/todo-run',
+        description: 'Execute a to-do task',
+        action: () => {
+          throw new Error('Todo-run command should be handled by useCommandHandler');
+        },
+        args: ['task_id', 'dry_run?']
+      },
+      {
+        command: '/todo-cancel',
+        description: 'Cancel a to-do task',
+        action: () => {
+          throw new Error('Todo-cancel command should be handled by useCommandHandler');
+        },
+        args: ['task_id']
+      },
+      {
+        command: '/vision',
+        description: 'Toggle vision mode for UI automation',
+        action: () => {
+          throw new Error('Vision command should be handled by useCommandHandler');
+        },
+        args: ['on|off']
       }
     ];
   }, [availableModules, currentModule, switchModule, config, updateConfig]);
