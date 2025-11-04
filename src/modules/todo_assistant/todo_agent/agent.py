@@ -141,8 +141,9 @@ class TodoAgent:
             
             logger.info("Executing task %d: %s", task_id, task.description)
             
-            task.status = TaskStatus.IN_PROGRESS
-            task.updated_at = datetime.now()
+            if not dry_run:
+                task.status = TaskStatus.IN_PROGRESS
+                task.updated_at = datetime.now()
             
             results = []
             

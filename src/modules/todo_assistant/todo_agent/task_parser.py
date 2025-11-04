@@ -7,7 +7,7 @@ Parse natural language task descriptions into MCP tool actions.
 
 import logging
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

@@ -65,7 +65,10 @@ class RAGEngine:
         """Initialize FAISS vector store."""
         try:
             from langchain_community.vectorstores import FAISS
-            from langchain_community.embeddings import OllamaEmbeddings
+            try:
+                from langchain_ollama import OllamaEmbeddings
+            except ImportError:
+                from langchain_community.embeddings import OllamaEmbeddings
             
             # Use embeddings from project's existing configuration
             embeddings = OllamaEmbeddings(model="mxbai-embed-large")
@@ -93,7 +96,10 @@ class RAGEngine:
         """Initialize Chroma vector store."""
         try:
             from langchain_community.vectorstores import Chroma
-            from langchain_community.embeddings import OllamaEmbeddings
+            try:
+                from langchain_ollama import OllamaEmbeddings
+            except ImportError:
+                from langchain_community.embeddings import OllamaEmbeddings
             
             embeddings = OllamaEmbeddings(model="mxbai-embed-large")
             persist_path = Path(self.persist_directory) / "chroma_db"
@@ -138,7 +144,10 @@ class RAGEngine:
             if self.vector_store is None:
                 # Create new vector store with first documents
                 from langchain_community.vectorstores import FAISS
-                from langchain_community.embeddings import OllamaEmbeddings
+                try:
+                    from langchain_ollama import OllamaEmbeddings
+                except ImportError:
+                    from langchain_community.embeddings import OllamaEmbeddings
                 
                 embeddings = OllamaEmbeddings(model="mxbai-embed-large")
                 self.vector_store = FAISS.from_documents(documents, embeddings)
