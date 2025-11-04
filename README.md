@@ -162,8 +162,11 @@ The compose stack automatically provides:
 - **[Deployment Guide](docs/deployment.md)** - Docker, Kubernetes, and production setup
 - **[Terminal Frontend](docs/terminal-frontend.md)** - React interface architecture and event protocol
 - **[Prompt Management](docs/prompt_management.md)** - Module system and prompt loading
+- **[To-Do Desktop Assistant](src/modules/todo_assistant/README.md)** - MCP + RAG + UI automation for task automation
 
 ## Features
+
+### Core Security Features
 
 - **Autonomous Operation**: Conducts security assessments with minimal human intervention
 - **Intelligent Tool Selection**: Automatically chooses appropriate security tools (nmap, sqlmap, nikto, etc.)
@@ -175,6 +178,18 @@ The compose stack automatically provides:
 - **Swarm Intelligence**: Deploy parallel agents with shared memory for complex tasks
 - **Real-Time Monitoring**: React interface displays live agent reasoning and tool execution
 - **Observability**: Built-in Langfuse tracing and Ragas evaluation metrics
+
+### NEW: To-Do Desktop Assistant 🤖
+
+- **Natural Language Tasks**: Add automation tasks in plain English (e.g., "open notepad then type 'hello'")
+- **MCP Automation Tools**: 5 core tools for desktop interaction (open_app, click_ui, type_text, read_screen, run_custom_script)
+- **RAG-Powered Context**: Upload PDF manuals for intelligent task assistance
+- **Custom Scripts**: Create and execute Python automation scripts
+- **Streamlit UI**: Interactive interface with task management, PDF upload, and debug mode
+- **Vibe Coding**: Gemini-style conversational coding interface
+- **Safety First**: Dry-run preview, consent checks, and execution logs
+
+[📖 Full Documentation](src/modules/todo_assistant/README.md) | [⚡ Quick Start](docs/todo-assistant-setup.md)
 
 ## Architecture
 
