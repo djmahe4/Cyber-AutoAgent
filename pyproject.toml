@@ -45,7 +45,13 @@ dependencies = [
     "ragas>=0.3.0",
     "langfuse>=2.0.0",
     "langchain-aws>=0.2.0",
-    "langchain-ollama>=0.2.0"
+    "langchain-ollama>=0.2.0",
+    # To-Do Assistant dependencies
+    "streamlit>=1.28.0",
+    "pyautogui>=0.9.54",
+    "pillow>=10.0.0",
+    "langchain-community>=0.0.20",
+    "pypdf>=3.17.0"
 ]
 
 [project.optional-dependencies]

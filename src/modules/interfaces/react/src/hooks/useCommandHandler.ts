@@ -11,6 +11,7 @@ import { AssessmentFlow } from '../services/AssessmentFlow.js';
 import { OperationManager } from '../services/OperationManager.js';
 import { ApplicationState } from './useApplicationState.js';
 import { loggingService } from '../services/LoggingService.js';
+import { getTodoService } from '../services/TodoService.js';
 
 interface UseCommandHandlerProps {
   commandParser: InputParser;
@@ -224,6 +225,193 @@ export function useCommandHandler({
     }
   }, [addOperationHistoryEntry]);
 
+  // To-Do Assistant command handlers
+  const handleTodoAdd = useCallback(async (args: string[]) => {
+    const description = args.join(' ');
+    if (!description) {
+      addOperationHistoryEntry('error', 'Usage: /todo <task description>');
+      return;
+    }
+
+    try {
+      const todoService = getTodoService();
+      const task = await todoService.addTask(description);
+      
+      addOperationHistoryEntry('success', `✅ Task #${task.id} created with ${task.actions.length} actions`);
+      
+      // Show parsed actions
+      let actionsText = '\nParsed actions:\n';
+      task.actions.forEach((action, i) => {
+        actionsText += `  ${i + 1}. ${action.tool}(${JSON.stringify(action.params)})\n`;
+      });
+      addOperationHistoryEntry('info', actionsText);
+      
+      // Emit event
+      loggingService.info('[TODO_EVENT] task:created', { taskId: task.id });
+    } catch (error) {
+      addOperationHistoryEntry('error', `Failed to add task: ${error}`);
+      loggingService.error('[TODO_EVENT] task:create:failed', { error });
+    }
+  }, [addOperationHistoryEntry]);
+
+  const handleTodoList = useCallback(async (args: string[]) => {
+    try {
+      const todoService = getTodoService();
+      const status = args[0]; // Optional status filter
+      const tasks = await todoService.listTasks(status);
+      
+      if (tasks.length === 0) {
+        addOperationHistoryEntry('info', 'No tasks found');
+        return;
+      }
+      
+      let output = `\n📝 To-Do Tasks (${tasks.length}):\n\n`;
+      tasks.forEach(task => {
+        const statusIcon = task.status === 'completed' ? '✅' : 
+                          task.status === 'failed' ? '❌' : 
+                          task.status === 'in_progress' ? '🔄' : 
+                          task.status === 'cancelled' ? '🚫' : '⏳';
+        output += `${statusIcon} #${task.id} - ${task.description}\n`;
+        output += `   Status: ${task.status}, Actions: ${task.actions.length}\n\n`;
+      });
+      
+      addOperationHistoryEntry('info', output);
+      
+      // Emit event
+      loggingService.info('[TODO_EVENT] tasks:listed', { count: tasks.length });
+    } catch (error) {
+      addOperationHistoryEntry('error', `Failed to list tasks: ${error}`);
+      loggingService.error('[TODO_EVENT] tasks:list:failed', { error });
+    }
+  }, [addOperationHistoryEntry]);
+
+  const handleTodoRun = useCallback(async (args: string[]) => {
+    if (args.length === 0) {
+      addOperationHistoryEntry('error', 'Usage: /todo-run <task_id> [dry_run]');
+      return;
+    }
+
+    const taskId = parseInt(args[0]);
+    const dryRun = args[1] === 'true' || args[1] === 'dry';
+    
+    if (isNaN(taskId)) {
+      addOperationHistoryEntry('error', 'Invalid task ID');
+      return;
+    }
+
+    try {
+      const todoService = getTodoService();
+      
+      addOperationHistoryEntry('info', `${dryRun ? '🔍 Dry-running' : '▶️ Executing'} task #${taskId}...`);
+      
+      const result = await todoService.executeTask(taskId, dryRun);
+      
+      if (result.success) {
+        addOperationHistoryEntry('success', `✅ Task #${taskId} ${dryRun ? 'dry-run' : 'execution'} completed`);
+        
+        // Show results
+        let output = '\nResults:\n';
+        result.results?.forEach((r: any, i: number) => {
+          output += `  ${i + 1}. ${r.action.tool}: ${r.result?.success ? '✅' : '❌'}\n`;
+        });
+        addOperationHistoryEntry('info', output);
+        
+        // Emit event
+        loggingService.info('[TODO_EVENT] task:executed', { taskId, dryRun });
+      } else {
+        addOperationHistoryEntry('error', `❌ Task #${taskId} failed: ${result.error}`);
+        loggingService.error('[TODO_EVENT] task:execute:failed', { taskId, error: result.error });
+      }
+    } catch (error) {
+      addOperationHistoryEntry('error', `Failed to execute task: ${error}`);
+      loggingService.error('[TODO_EVENT] task:execute:error', { taskId, error });
+    }
+  }, [addOperationHistoryEntry]);
+
+  const handleTodoCancel = useCallback(async (args: string[]) => {
+    if (args.length === 0) {
+      addOperationHistoryEntry('error', 'Usage: /todo-cancel <task_id>');
+      return;
+    }
+
+    const taskId = parseInt(args[0]);
+    
+    if (isNaN(taskId)) {
+      addOperationHistoryEntry('error', 'Invalid task ID');
+      return;
+    }
+
+    try {
+      const todoService = getTodoService();
+      const success = await todoService.cancelTask(taskId);
+      
+      if (success) {
+        addOperationHistoryEntry('success', `🚫 Task #${taskId} cancelled`);
+        loggingService.info('[TODO_EVENT] task:cancelled', { taskId });
+      } else {
+        addOperationHistoryEntry('error', `Failed to cancel task #${taskId}`);
+      }
+    } catch (error) {
+      addOperationHistoryEntry('error', `Failed to cancel task: ${error}`);
+      loggingService.error('[TODO_EVENT] task:cancel:failed', { taskId, error });
+    }
+  }, [addOperationHistoryEntry]);
+
+  const handleVisionMode = useCallback(async (args: string[]) => {
+    if (args.length === 0) {
+      addOperationHistoryEntry('error', 'Usage: /vision <on|off|info>');
+      return;
+    }
+
+    const action = args[0].toLowerCase();
+    
+    try {
+      const todoService = getTodoService();
+      
+      if (action === 'info') {
+        // Show deployment and automation info
+        const [deploymentInfo, automationInfo] = await Promise.all([
+          todoService.getDeploymentInfo(),
+          todoService.getAutomationInfo()
+        ]);
+        
+        let output = '\n🔍 To-Do Assistant Deployment Info:\n\n';
+        output += `Mode: ${deploymentInfo.mode}\n`;
+        output += `Location: ${deploymentInfo.is_container ? 'Container' : 'Local'}\n`;
+        output += `Project Root: ${deploymentInfo.project_root}\n\n`;
+        
+        output += 'Available Features:\n';
+        for (const [feature, available] of Object.entries(deploymentInfo.features)) {
+          const icon = available ? '✅' : '❌';
+          output += `  ${icon} ${feature}\n`;
+        }
+        
+        output += '\nAutomation:\n';
+        output += `  Platform: ${automationInfo.platform || 'Unknown'}\n`;
+        output += `  Primary Method: ${automationInfo.primary_method || 'None'}\n`;
+        output += `  Vision Mode: ${automationInfo.vision_mode ? 'Enabled' : 'Disabled'}\n`;
+        
+        addOperationHistoryEntry('info', output);
+        return;
+      }
+      
+      const enabled = action === 'on';
+      await todoService.setVisionMode(enabled);
+      
+      addOperationHistoryEntry('success', `🔍 Vision mode ${enabled ? 'enabled' : 'disabled'}`);
+      addOperationHistoryEntry('info', 
+        enabled 
+          ? 'Using OpenCV + PyAutoGUI for pixel-based UI element detection' 
+          : 'Using platform-specific automation tools'
+      );
+      
+      loggingService.info('[TODO_EVENT] vision:mode:changed', { enabled });
+    } catch (error) {
+      addOperationHistoryEntry('error', `Failed to set vision mode: ${error}`);
+      loggingService.error('[TODO_EVENT] vision:mode:failed', { action, error });
+    }
+  }, [addOperationHistoryEntry]);
+
   const handleSlashCommand = useCallback(async (command: string, args: string[]) => {
     // Handle command aliases
     const aliases: Record<string, string> = {
@@ -276,13 +464,23 @@ SLASH COMMANDS:
   /health               - Check system and container status
   /setup                - Setup wizard (initial setup or switch deployments)
 
-KEYBORD SHORTCUTS:
+TO-DO ASSISTANT COMMANDS:
+  /todo <description>   - Add desktop automation task
+  /todo-list [status]   - List all tasks (optional: pending/completed/failed)
+  /todo-run <id> [dry]  - Execute task (add 'dry' for dry-run)
+  /todo-cancel <id>     - Cancel a pending task
+  /vision <on|off|info> - Toggle vision mode or show deployment info
+
+KEYBOARD SHORTCUTS:
   Ctrl+C                - Clear input / Pause assessment
   Ctrl+L                - Clear screen
 
 EXAMPLES:
   target https://testphp.vulnweb.com
   execute focus on OWASP Top 10
+  /todo open notepad then type 'Hello World'
+  /todo-list pending
+  /todo-run 1 dry
 
 For detailed instructions, use: /docs`;
         addOperationHistoryEntry('info', helpMessage);
@@ -341,6 +539,24 @@ For detailed instructions, use: /docs`;
         // Use the same robust exit path as the ESC kill switch
         requestExit();
         break;
+      
+      // To-Do Assistant Commands
+      case 'todo':
+        await handleTodoAdd(args);
+        break;
+      case 'todo-list':
+        await handleTodoList(args);
+        break;
+      case 'todo-run':
+        await handleTodoRun(args);
+        break;
+      case 'todo-cancel':
+        await handleTodoCancel(args);
+        break;
+      case 'vision':
+        await handleVisionMode(args);
+        break;
+      
       default:
         addOperationHistoryEntry('error', `Unknown command: /${command}. Type /help for available commands.`);
     }
