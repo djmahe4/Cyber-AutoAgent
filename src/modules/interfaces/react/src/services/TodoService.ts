@@ -222,6 +222,24 @@ export class TodoService extends EventEmitter {
   }
 
   /**
+   * Get deployment information
+   */
+  async getDeploymentInfo(): Promise<any> {
+    try {
+      const result = await this.executePython('get_deployment_info', {});
+      
+      if (result.success && result.deployment) {
+        return result.deployment;
+      } else {
+        throw new Error(result.error || 'Failed to get deployment info');
+      }
+    } catch (error) {
+      loggingService.error('Failed to get deployment info', { error });
+      throw error;
+    }
+  }
+
+  /**
    * Execute Python command via subprocess
    */
   private async executePython(command: string, params: any): Promise<any> {

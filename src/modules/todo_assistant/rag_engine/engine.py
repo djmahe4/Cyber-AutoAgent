@@ -31,11 +31,23 @@ class RAGEngine:
         Args:
             vector_store: Type of vector store ('faiss' or 'chroma')
             embedding_model: Embedding model to use (default: uses project default)
-            persist_directory: Directory to persist vector store
+            persist_directory: Directory to persist vector store (uses deployment adapter if None)
         """
         self.vector_store_type = vector_store
         self.embedding_model_name = embedding_model
-        self.persist_directory = persist_directory or "./outputs/rag_store"
+        
+        # Use deployment adapter for path resolution
+        if persist_directory is None:
+            try:
+                from ..deployment_adapter import get_path_adapter
+                path_adapter = get_path_adapter()
+                self.persist_directory = str(path_adapter.get_rag_store_dir())
+            except ImportError:
+                # Fallback if deployment adapter not available
+                self.persist_directory = "./outputs/rag_store"
+        else:
+            self.persist_directory = persist_directory
+        
         self.vector_store = None
         self.documents = []
         

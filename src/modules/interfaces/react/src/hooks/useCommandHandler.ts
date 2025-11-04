@@ -359,14 +359,43 @@ export function useCommandHandler({
 
   const handleVisionMode = useCallback(async (args: string[]) => {
     if (args.length === 0) {
-      addOperationHistoryEntry('error', 'Usage: /vision <on|off>');
+      addOperationHistoryEntry('error', 'Usage: /vision <on|off|info>');
       return;
     }
 
-    const enabled = args[0].toLowerCase() === 'on';
+    const action = args[0].toLowerCase();
     
     try {
       const todoService = getTodoService();
+      
+      if (action === 'info') {
+        // Show deployment and automation info
+        const [deploymentInfo, automationInfo] = await Promise.all([
+          todoService.getDeploymentInfo(),
+          todoService.getAutomationInfo()
+        ]);
+        
+        let output = '\n🔍 To-Do Assistant Deployment Info:\n\n';
+        output += `Mode: ${deploymentInfo.mode}\n`;
+        output += `Location: ${deploymentInfo.is_container ? 'Container' : 'Local'}\n`;
+        output += `Project Root: ${deploymentInfo.project_root}\n\n`;
+        
+        output += 'Available Features:\n';
+        for (const [feature, available] of Object.entries(deploymentInfo.features)) {
+          const icon = available ? '✅' : '❌';
+          output += `  ${icon} ${feature}\n`;
+        }
+        
+        output += '\nAutomation:\n';
+        output += `  Platform: ${automationInfo.platform || 'Unknown'}\n`;
+        output += `  Primary Method: ${automationInfo.primary_method || 'None'}\n`;
+        output += `  Vision Mode: ${automationInfo.vision_mode ? 'Enabled' : 'Disabled'}\n`;
+        
+        addOperationHistoryEntry('info', output);
+        return;
+      }
+      
+      const enabled = action === 'on';
       await todoService.setVisionMode(enabled);
       
       addOperationHistoryEntry('success', `🔍 Vision mode ${enabled ? 'enabled' : 'disabled'}`);
@@ -379,7 +408,7 @@ export function useCommandHandler({
       loggingService.info('[TODO_EVENT] vision:mode:changed', { enabled });
     } catch (error) {
       addOperationHistoryEntry('error', `Failed to set vision mode: ${error}`);
-      loggingService.error('[TODO_EVENT] vision:mode:failed', { enabled, error });
+      loggingService.error('[TODO_EVENT] vision:mode:failed', { action, error });
     }
   }, [addOperationHistoryEntry]);
 
@@ -440,7 +469,7 @@ TO-DO ASSISTANT COMMANDS:
   /todo-list [status]   - List all tasks (optional: pending/completed/failed)
   /todo-run <id> [dry]  - Execute task (add 'dry' for dry-run)
   /todo-cancel <id>     - Cancel a pending task
-  /vision <on|off>      - Toggle vision mode (pixel-based UI detection)
+  /vision <on|off|info> - Toggle vision mode or show deployment info
 
 KEYBOARD SHORTCUTS:
   Ctrl+C                - Clear input / Pause assessment

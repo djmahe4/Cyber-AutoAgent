@@ -31,16 +31,28 @@ except ImportError:
 class ActionLogger:
     """Logger for UI automation actions with screenshots and JSONL output."""
     
-    def __init__(self, session_id: Optional[str] = None, log_dir: str = "./logs"):
+    def __init__(self, session_id: Optional[str] = None, log_dir: Optional[str] = None):
         """
         Initialize action logger.
         
         Args:
             session_id: Unique session identifier (auto-generated if None)
-            log_dir: Directory for log files
+            log_dir: Directory for log files (uses deployment adapter if None)
         """
         self.session_id = session_id or self._generate_session_id()
-        self.log_dir = Path(log_dir)
+        
+        # Use deployment adapter for path resolution
+        if log_dir is None:
+            try:
+                from ..deployment_adapter import get_path_adapter
+                path_adapter = get_path_adapter()
+                self.log_dir = path_adapter.get_logs_dir()
+            except ImportError:
+                # Fallback if deployment adapter not available
+                self.log_dir = Path("./logs")
+        else:
+            self.log_dir = Path(log_dir)
+        
         self.screenshot_dir = self.log_dir / "screenshots" / self.session_id
         
         # Create directories

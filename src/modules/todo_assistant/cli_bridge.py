@@ -40,15 +40,36 @@ def get_agent():
     """Get or create agent instance."""
     global _agent
     if _agent is None:
-        mcp_server = MCPServer(consent_required=False)  # No consent for CLI
-        
-        # Try to initialize RAG engine, but don't fail if dependencies missing
-        rag_engine = None
+        # Use deployment adapter for configuration
         try:
-            rag_engine = RAGEngine(vector_store="faiss")
-        except Exception:
-            # RAG engine optional for basic functionality
-            pass
+            from modules.todo_assistant.deployment_adapter import get_config_adapter
+            config_adapter = get_config_adapter()
+            
+            mcp_config = config_adapter.get_mcp_config()
+            rag_config = config_adapter.get_rag_config()
+            
+            # Create MCP server with deployment-aware config
+            mcp_server = MCPServer(consent_required=mcp_config["consent_required"])
+            
+            # Initialize RAG engine if available
+            rag_engine = None
+            if rag_config["enabled"]:
+                try:
+                    rag_engine = RAGEngine(
+                        vector_store=rag_config["vector_store"],
+                        persist_directory=rag_config["persist_directory"]
+                    )
+                except Exception as e:
+                    logger.warning("RAG engine initialization failed: %s", str(e))
+            
+        except ImportError:
+            # Fallback if deployment adapter not available
+            mcp_server = MCPServer(consent_required=False)
+            rag_engine = None
+            try:
+                rag_engine = RAGEngine(vector_store="faiss")
+            except Exception:
+                pass
         
         _agent = TodoAgent(
             mcp_server=mcp_server,
@@ -242,6 +263,28 @@ def get_automation_info_cmd(params):
         }
 
 
+def get_deployment_info_cmd(params):
+    """Get deployment information."""
+    try:
+        from modules.todo_assistant.deployment_adapter import get_config_adapter
+        config_adapter = get_config_adapter()
+        info = config_adapter.get_deployment_info()
+        
+        return {
+            'success': True,
+            'deployment': info
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e),
+            'deployment': {
+                'mode': 'unknown',
+                'error': str(e)
+            }
+        }
+
+
 # Command map
 COMMANDS = {
     'add_task': add_task,
@@ -251,7 +294,8 @@ COMMANDS = {
     'cancel_task': cancel_task,
     'set_vision_mode': set_vision_mode_cmd,
     'get_action_logs': get_action_logs_cmd,
-    'get_automation_info': get_automation_info_cmd
+    'get_automation_info': get_automation_info_cmd,
+    'get_deployment_info': get_deployment_info_cmd
 }
 
 
