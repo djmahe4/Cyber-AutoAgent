@@ -709,14 +709,33 @@ See `.env.example` for complete configuration options and usage examples.
 
 ### Running Tests
 
-This project uses `uv` for dependency management and testing:
+**Quick Start (Recommended)**
+
+```bash
+# Setup local development environment
+make setup-local
+
+# Run all tests
+make test
+
+# Run tests with coverage
+make test-coverage
+
+# Run linting
+make lint
+
+# Run all CI checks locally
+make ci
+```
+
+**Using pytest directly with uv**
 
 ```bash
 # Run all tests
 uv run pytest
 
 # Run specific test file
-uv run pytest tests/test_agent.py
+uv run pytest tests/test_config.py
 
 # Run tests with verbose output
 uv run pytest -v
@@ -724,6 +743,21 @@ uv run pytest -v
 # Run tests with coverage
 uv run pytest --cov=src
 ```
+
+**Using the test script**
+
+```bash
+# Run all tests
+./scripts/run_tests.sh
+
+# Run with coverage
+COVERAGE=true ./scripts/run_tests.sh
+
+# Run specific tests
+TEST_PATH=tests/test_config.py ./scripts/run_tests.sh
+```
+
+> **📖 [Complete Testing Guide](docs/TESTING.md)** - Comprehensive documentation on running tests locally, in Docker, and in CI environments
 
 ## Project Structure
 

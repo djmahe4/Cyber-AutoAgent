@@ -1,0 +1,46 @@
+name: Test
+
+on:
+  push:
+    branches: [ main, develop, 'feature/*', 'fix/*' ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-mock pydantic
+        # Install project dependencies
+        pip install -e .
+    
+    - name: Install system dependencies for GUI testing
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb python3-tk python3-dev
+      
+    - name: Run tests
+      run: |
+        export PYTHONPATH="${PWD}/src:${PYTHONPATH}"
+        # Run tests with xvfb for headless GUI support
+        xvfb-run -a pytest tests/ -v --tb=short
+      env:
+        LITELLM_MODE: PRODUCTION
+        # Mock API keys for testing configurations (not real keys)
+        GEMINI_API_KEY: test-gemini-key-for-ci
+        XAI_API_KEY: test-xai-key-for-ci
+        OPENAI_API_KEY: test-openai-key-for-ci

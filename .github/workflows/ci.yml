@@ -31,10 +31,15 @@ jobs:
         export PYTHONPATH="${PWD}/src:${PYTHONPATH}"
         # Sync dependencies from lock file
         uv sync
-        # Add dev dependencies
-        uv add --dev pylint pytest pytest-mock
+        # Add dev dependencies including pydantic for Gemini validation
+        uv add --dev pylint pytest pytest-mock pydantic
         # Install package in editable mode with PYTHONPATH set
         uv pip install -e .
+    
+    - name: Install system dependencies for GUI testing
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb python3-tk python3-dev
     
     - name: Run Pylint
       run: |
@@ -49,7 +54,14 @@ jobs:
       run: |
         export PATH="$HOME/.local/bin:$PATH"
         export PYTHONPATH="${PWD}/src:${PYTHONPATH}"
-        PYTHONPATH="${PWD}/src:${PYTHONPATH}" uv run pytest tests/ -v
+        # Run tests with xvfb for headless GUI support
+        PYTHONPATH="${PWD}/src:${PYTHONPATH}" xvfb-run -a uv run pytest tests/ -v
+      env:
+        LITELLM_MODE: PRODUCTION
+        # Mock API keys for testing configurations (not real keys)
+        GEMINI_API_KEY: test-gemini-key-for-ci
+        XAI_API_KEY: test-xai-key-for-ci
+        OPENAI_API_KEY: test-openai-key-for-ci
     
     - name: Check Pylint minimum score
       run: |
