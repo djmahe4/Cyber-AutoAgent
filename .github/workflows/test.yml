@@ -27,10 +27,16 @@ jobs:
         pip install pytest pytest-mock
         # Install project dependencies
         pip install -e .
+    
+    - name: Install system dependencies for GUI testing
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb python3-tk python3-dev
       
     - name: Run tests
       run: |
         export PYTHONPATH="${PWD}/src:${PYTHONPATH}"
-        pytest tests/ -v --tb=short
+        # Run tests with xvfb for headless GUI support
+        xvfb-run -a pytest tests/ -v --tb=short
       env:
         LITELLM_MODE: PRODUCTION

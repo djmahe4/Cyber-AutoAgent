@@ -22,48 +22,70 @@ class TestCleanOperationMemory:
 
     def test_clean_operation_memory_no_target_name(self, caplog):
         """Test that clean_operation_memory logs warning when no target_name is provided."""
-        clean_operation_memory(operation_id="test_op", target_name=None)
-        assert "No target_name provided, skipping memory cleanup" in caplog.text
+        import logging
+        with caplog.at_level(logging.WARNING):
+            clean_operation_memory(operation_id="test_op", target_name=None)
+            assert "No target_name provided, skipping memory cleanup" in caplog.text
 
-    def test_clean_operation_memory_path_not_exists(self, caplog):
+    def test_clean_operation_memory_path_not_exists(self, tmp_path, caplog):
         """Test that clean_operation_memory handles non-existent path."""
-        clean_operation_memory(operation_id="test_op", target_name="test_target")
-        assert "Memory path does not exist" in caplog.text
+        # Change to a temporary directory so the path doesn't exist
+        import os
+        import logging
+        orig_dir = os.getcwd()
+        try:
+            os.chdir(tmp_path)
+            with caplog.at_level(logging.DEBUG):
+                clean_operation_memory(operation_id="test_op", target_name="test_target")
+                assert "Memory path does not exist" in caplog.text
+        finally:
+            os.chdir(orig_dir)
 
-    def test_clean_operation_memory_removes_directory(self, tmp_path):
+    def test_clean_operation_memory_removes_directory(self, tmp_path, caplog):
         """Test that clean_operation_memory removes the memory directory."""
-        # Setup test directory structure
-        target_name = "test_target"
-        memory_path = tmp_path / "outputs" / target_name / "memory" / f"mem0_faiss_{target_name}"
-        memory_path.mkdir(parents=True, exist_ok=True)
-        
-        # Verify it exists
-        assert memory_path.exists()
-        
-        # Mock the paths to use tmp_path
-        with patch("os.path.join", side_effect=lambda *args: str(tmp_path / "outputs" / target_name / "memory" / f"mem0_faiss_{target_name}")):
-            with patch("os.path.exists", return_value=True):
-                with patch("os.path.isdir", return_value=True):
-                    with patch("shutil.rmtree") as mock_rmtree:
-                        clean_operation_memory(operation_id="test_op", target_name=target_name)
-                        mock_rmtree.assert_called_once()
+        # Setup test directory structure in tmp_path
+        import os
+        import logging
+        orig_dir = os.getcwd()
+        try:
+            os.chdir(tmp_path)
+            target_name = "test_target"
+            memory_path = tmp_path / "outputs" / target_name / "memory" / f"mem0_faiss_{target_name}"
+            memory_path.mkdir(parents=True, exist_ok=True)
+            
+            # Verify it exists
+            assert memory_path.exists()
+            
+            # Call clean_operation_memory
+            with caplog.at_level(logging.INFO):
+                clean_operation_memory(operation_id="test_op", target_name=target_name)
+            
+            # Verify it was deleted
+            assert not memory_path.exists()
+            assert "Cleaned up operation memory" in caplog.text
+        finally:
+            os.chdir(orig_dir)
 
     def test_clean_operation_memory_safety_check(self, caplog):
         """Test that clean_operation_memory performs safety check."""
+        import logging
         # Create a path without the expected pattern
-        with patch("os.path.exists", return_value=True):
-            with patch("os.path.join", return_value="/some/dangerous/path"):
-                clean_operation_memory(operation_id="test_op", target_name="test_target")
-                assert "SAFETY CHECK FAILED" in caplog.text
+        with caplog.at_level(logging.ERROR):
+            with patch("os.path.exists", return_value=True):
+                with patch("modules.config.environment.os.path.join", return_value="/some/dangerous/path"):
+                    clean_operation_memory(operation_id="test_op", target_name="test_target")
+                    assert "SAFETY CHECK FAILED" in caplog.text
 
     def test_clean_operation_memory_handles_exception(self, caplog):
         """Test that clean_operation_memory handles exceptions gracefully."""
-        with patch("os.path.exists", return_value=True):
-            with patch("os.path.join", return_value="/outputs/test/memory/mem0_faiss_test"):
-                with patch("os.path.isdir", return_value=True):
-                    with patch("shutil.rmtree", side_effect=Exception("Test error")):
-                        clean_operation_memory(operation_id="test_op", target_name="test_target")
-                        assert "Failed to clean" in caplog.text
+        import logging
+        with caplog.at_level(logging.ERROR):
+            with patch("os.path.exists", return_value=True):
+                with patch("modules.config.environment.os.path.join", return_value="/outputs/test/memory/mem0_faiss_test"):
+                    with patch("os.path.isdir", return_value=True):
+                        with patch("shutil.rmtree", side_effect=Exception("Test error")):
+                            clean_operation_memory(operation_id="test_op", target_name="test_target")
+                            assert "Failed to clean" in caplog.text
 
 
 class TestAutoSetup:
