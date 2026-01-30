@@ -153,7 +153,7 @@ class GeminiLLMConfig(BaseModel):
             
             # Validate temperature range
             temp_min, temp_max = config["temperature_range"]
-            if not (temp_min <= self.temperature <= temp_max):
+            if not temp_min <= self.temperature <= temp_max:
                 raise ValueError(
                     f"Temperature {self.temperature} outside valid range "
                     f"[{temp_min}, {temp_max}] for {model_name}"
