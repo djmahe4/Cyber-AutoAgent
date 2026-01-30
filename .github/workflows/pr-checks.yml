@@ -34,6 +34,11 @@ jobs:
         # Install package in editable mode
         uv pip install -e .
     
+    - name: Install system dependencies for GUI testing
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb python3-tk python3-dev
+    
     - name: Run Pylint
       id: pylint
       run: |
@@ -49,7 +54,8 @@ jobs:
       run: |
         export PATH="$HOME/.local/bin:$PATH"
         export PYTHONPATH="${PWD}/src:${PYTHONPATH}"
-        PYTHONPATH="${PWD}/src:${PYTHONPATH}" uv run pytest tests/ -v --tb=short
+        # Run tests with xvfb for headless GUI support
+        PYTHONPATH="${PWD}/src:${PYTHONPATH}" xvfb-run -a uv run pytest tests/ -v --tb=short
     
     - name: Display Results Summary
       if: always()

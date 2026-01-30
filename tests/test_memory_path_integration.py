@@ -27,20 +27,24 @@ class TestMemoryPathIntegration:
 
         # Test the path construction logic
         with patch("modules.tools.memory.get_config_manager") as mock_config_manager:
+            # Use proper AWS Bedrock model names that mem0 can parse
             mock_config_manager.return_value.get_mem0_service_config.return_value = {
                 "vector_store": {"provider": "faiss", "config": {}},
                 "embedder": {
                     "provider": "aws_bedrock",
-                    "config": {"model": "test-model"},
+                    "config": {"model": "amazon.titan-embed-text-v1"},
                 },
-                "llm": {"provider": "aws_bedrock", "config": {"model": "test-llm"}},
+                "llm": {"provider": "aws_bedrock", "config": {"model": "anthropic.claude-3-sonnet-20240229-v1:0"}},
             }
+            
+            # Mock Mem0Memory.from_config to prevent actual AWS calls
+            with patch("modules.tools.memory.Mem0Memory.from_config") as mock_from_config:
+                mock_from_config.return_value = MagicMock()
 
-            client = Mem0ServiceClient(config)
+                client = Mem0ServiceClient(config)
 
-            # The client should have constructed the correct path
-            # This tests the internal path construction logic
-            assert client is not None
+                # The client should have constructed correctly
+                assert client is not None
 
     def test_memory_path_with_sanitized_target_names(self):
         """Test memory paths with various target name formats."""
@@ -257,11 +261,11 @@ class TestMemoryToolsPathConstruction:
     @patch("modules.tools.memory.Mem0Memory.from_config")
     def test_faiss_path_construction(self, mock_from_config, mock_makedirs, mock_config_manager):
         """Test FAISS path construction in memory tools."""
-        # Mock config manager
+        # Mock config manager with proper AWS Bedrock model names
         mock_config_manager.return_value.get_mem0_service_config.return_value = {
             "vector_store": {"provider": "faiss", "config": {}},
-            "embedder": {"provider": "aws_bedrock", "config": {"model": "test-model"}},
-            "llm": {"provider": "aws_bedrock", "config": {"model": "test-llm"}},
+            "embedder": {"provider": "aws_bedrock", "config": {"model": "amazon.titan-embed-text-v1"}},
+            "llm": {"provider": "aws_bedrock", "config": {"model": "anthropic.claude-3-sonnet-20240229-v1:0"}},
         }
 
         # Mock Mem0Memory.from_config to prevent actual initialization
@@ -281,13 +285,14 @@ class TestMemoryToolsPathConstruction:
     @patch("modules.tools.memory.Mem0Memory.from_config")
     def test_memory_path_with_custom_path(self, mock_from_config, mock_config_manager):
         """Test that custom memory paths are respected."""
+        # Use proper AWS Bedrock model names
         mock_config_manager.return_value.get_mem0_service_config.return_value = {
             "vector_store": {
                 "provider": "faiss",
                 "config": {"path": "/tmp/custom/path"},
             },
-            "embedder": {"provider": "aws_bedrock", "config": {"model": "test-model"}},
-            "llm": {"provider": "aws_bedrock", "config": {"model": "test-llm"}},
+            "embedder": {"provider": "aws_bedrock", "config": {"model": "amazon.titan-embed-text-v1"}},
+            "llm": {"provider": "aws_bedrock", "config": {"model": "anthropic.claude-3-sonnet-20240229-v1:0"}},
         }
 
         # Mock Mem0Memory.from_config to prevent actual initialization
