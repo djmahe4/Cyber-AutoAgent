@@ -34,13 +34,37 @@ logger = logging.getLogger(__name__)
 LITELLM_EMBEDDING_DEFAULTS: Dict[str, Tuple[str, int]] = {
     "openai": ("openai/text-embedding-3-small", 1536),
     "azure": ("azure/text-embedding-3-small", 1536),
-    "gemini": ("models/text-embedding-004", 768),
-    "google": ("models/text-embedding-004", 768),
+    "gemini": ("gemini/text-embedding-004", 768),
+    "google": ("gemini/text-embedding-004", 768),
     "mistral": ("multi-qa-MiniLM-L6-cos-v1", 384),
     "sagemaker": ("multi-qa-MiniLM-L6-cos-v1", 384),
     "xai": ("multi-qa-MiniLM-L6-cos-v1", 384),
 }
 DEFAULT_LITELLM_EMBEDDING: Tuple[str, int] = ("multi-qa-MiniLM-L6-cos-v1", 384)
+
+# Gemini model defaults for LiteLLM
+GEMINI_LLM_DEFAULTS = {
+    "gemini-2.5-flash": {
+        "temperature": 0.95,
+        "max_tokens": 8192,
+        "context_window": 1048576,
+    },
+    "gemini-2.0-flash-exp": {
+        "temperature": 0.95,
+        "max_tokens": 8192,
+        "context_window": 1048576,
+    },
+    "gemini-1.5-flash": {
+        "temperature": 0.95,
+        "max_tokens": 8192,
+        "context_window": 1048576,
+    },
+    "gemini-1.5-pro": {
+        "temperature": 0.95,
+        "max_tokens": 8192,
+        "context_window": 2097152,
+    },
+}
 
 EMBEDDING_DIMENSIONS: Dict[str, int] = {
     "text-embedding-3-small": 1536,
@@ -55,6 +79,11 @@ EMBEDDING_DIMENSIONS: Dict[str, int] = {
     "models/text-embedding-004": 768,
     "text-embedding-004": 768,
     "gemini/text-embedding-004": 768,
+    "gemini/models/text-embedding-004": 768,
+    "google/text-embedding-004": 768,
+    "models/embedding-001": 768,
+    "embedding-001": 768,
+    "gemini/embedding-001": 768,
     "amazon.titan-embed-text-v1": 1536,
     "amazon.titan-embed-text-v2:0": 1024,
     "cohere.embed-english-v3": 1024,

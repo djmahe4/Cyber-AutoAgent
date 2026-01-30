@@ -1,112 +1,47 @@
-# Documentation
+# Cyber-AutoAgent Documentation
 
-This directory contains comprehensive technical documentation for Cyber-AutoAgent. Each document covers specific aspects of the system architecture, operation, and deployment.
-
-## Documentation Structure
-
-### Core Architecture
-
-**[architecture.md](architecture.md)**
-- Single agent meta-everything architecture
-- Strands framework integration
-- Tool hierarchy and selection
-- Metacognitive decision-making patterns
-- Memory integration
-
-### System Components
-
-**[memory.md](memory.md)**
-- Memory system architecture
-- Backend configurations (FAISS, OpenSearch, Mem0 Platform)
-- Evidence categorization and storage
-- Reflection and planning systems
-- Query optimization
-
-**[prompt_management.md](prompt_management.md)**
-- Module-based prompt system
-- Prompt loading and composition
-- Tool discovery mechanisms
-- Report generation integration
-
-**[prompt_optimizer.md](prompt_optimizer.md)**
-- Dynamic prompt optimization
-- Meta-prompting approach
-- Automatic optimization triggers
-- XML tag preservation
-- Performance improvements
-
-### Interface and User Experience
-
-**[terminal-frontend.md](terminal-frontend.md)**
-- React-based terminal interface
-- Event-driven architecture
-- Service layer implementation
-- State management patterns
-
-**[user-instructions.md](user-instructions.md)**
-- Command line operation
-- Module selection
-- Provider configuration
-- Output management
-- Troubleshooting
-
-### Operations
-
-**[observability-evaluation.md](observability-evaluation.md)**
-- Langfuse tracing integration
-- Ragas evaluation metrics
-- Performance monitoring
-- Automated scoring
-
-**[deployment.md](deployment.md)**
-- Docker deployment
-- Production configuration
-- Security considerations
-- Troubleshooting guides
-
-## Quick Navigation
-
-| Documentation Need | Recommended Document |
-|-------------------|---------------------|
-| Understanding agent design | [architecture.md](architecture.md) |
-| Running assessments | [user-instructions.md](user-instructions.md) |
-| Configuring memory | [memory.md](memory.md) |
-| Creating custom modules | [prompt_management.md](prompt_management.md) |
-| Monitoring operations | [observability-evaluation.md](observability-evaluation.md) |
-| Production deployment | [deployment.md](deployment.md) |
-| Understanding UI architecture | [terminal-frontend.md](terminal-frontend.md) |
-| Optimizing prompts | [prompt_optimizer.md](prompt_optimizer.md) |
+Welcome to the Cyber-AutoAgent documentation. This directory contains comprehensive guides for using, configuring, and extending the agent.
 
 ## Getting Started
 
-1. **New Users**: Start with [user-instructions.md](user-instructions.md) for operational guidance
-2. **Developers**: Review [architecture.md](architecture.md) for system design
-3. **Operations**: Consult [deployment.md](deployment.md) for production setup
-4. **Module Developers**: See [prompt_management.md](prompt_management.md) for custom modules
+- **[User Instructions](user-instructions.md)** - Complete guide for end users
+- **[Architecture](architecture.md)** - System architecture and design
+- **[Deployment](deployment.md)** - Deployment options and Docker setup
 
-## Document Conventions
+## Configuration & Integration
 
-**Code Examples**: All code examples use actual file paths and verified commands
-**Diagrams**: Mermaid diagrams illustrate architecture and flow patterns
-**Configuration**: Examples include realistic configuration values
-**Cross-References**: Links connect related concepts across documents
+- **[Gemini Integration](gemini-integration.md)** - NEW: Google Gemini 2.5 Flash integration guide
+- **[Memory System](memory.md)** - Memory configuration and backends
+- **[Prompt Management](prompt_management.md)** - Langfuse prompt system
+- **[Observability & Evaluation](observability-evaluation.md)** - Monitoring and metrics
 
-## Additional Resources
+## Development & Testing
 
-**Main Project README**: [../README.md](../README.md) - Project overview and quick start
-**Source Code**: [../src/](../src/) - Implementation details
-**Operation Modules**: [../src/modules/operation_plugins/](../src/modules/operation_plugins/) - Available modules
+- **[Testing Guide](TESTING.md)** - How to run and write tests
+- **[Terminal Frontend](terminal-frontend.md)** - React CLI interface
 
-## Contributing to Documentation
+## Advanced Features
 
-When updating documentation:
-- Maintain professional technical tone
-- Verify all code examples
-- Update cross-references
-- Include diagrams where helpful
-- Document actual implementation, not planned features
-- Follow existing style and structure
+- **[Prompt Optimizer](prompt_optimizer.md)** - Automatic prompt optimization
+- **[Todo Assistant](todo-assistant.md)** - Desktop automation assistant
+  - [Setup Guide](todo-assistant-setup.md)
+  - [React CLI](todo-assistant-react-cli.md)
+  - [Deployment](todo-assistant-deployment.md)
+  - [Quick Reference](todo-assistant-quick-reference.md)
 
-## Documentation Status
+## Quick Links
 
-This documentation reflects the current implementation state. Features marked as "future" or "planned" are explicitly noted. All examples and configurations have been verified against the codebase.
+### New to Cyber-AutoAgent?
+1. Start with [User Instructions](user-instructions.md)
+2. Review [Architecture](architecture.md) to understand the system
+3. Choose your deployment: [Local or Docker](deployment.md)
+
+### Setting Up Gemini?
+1. Read the [Gemini Integration Guide](gemini-integration.md)
+2. Get your API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+3. Configure your `.env` file as shown in the guide
+
+### Need Help?
+- Check the relevant guide above
+- Review examples in the docs
+- Open an issue on GitHub

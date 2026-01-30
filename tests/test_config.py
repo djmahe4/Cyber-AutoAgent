@@ -427,6 +427,83 @@ class TestConfigManager:
         # Should not raise for missing AWS credentials (XAI_API_KEY is present)
         self.config_manager.validate_requirements("litellm")
 
+    @patch.dict(os.environ, {
+        "CYBER_AGENT_PROVIDER": "litellm",
+        "CYBER_AGENT_LLM_MODEL": "gemini/gemini-2.5-flash",
+        "CYBER_AGENT_EMBEDDING_MODEL": "gemini/text-embedding-004",
+        "GEMINI_API_KEY": "test-gemini-key",
+    }, clear=True)
+    def test_litellm_gemini_2_5_flash_configuration(self):
+        """Test LiteLLM configuration with Gemini 2.5 Flash."""
+        self.config_manager._config_cache = {}
+
+        config = self.config_manager.get_server_config("litellm")
+
+        # Verify LLM configuration
+        assert config.llm.model_id == "gemini/gemini-2.5-flash"
+        assert config.llm.provider == ModelProvider.LITELLM
+        assert config.llm.temperature == 0.95
+        assert config.llm.max_tokens == 32000  # Default for LiteLLM
+
+        # Verify embedding configuration
+        assert config.embedding.model_id == "gemini/text-embedding-004"
+        assert config.embedding.provider == ModelProvider.LITELLM
+        assert config.embedding.dimensions == 1024  # Default, will be overridden by LiteLLM
+
+        # Verify memory configs aligned
+        assert config.memory.llm.model_id == "gemini/gemini-2.5-flash"
+        assert config.memory.llm.provider == ModelProvider.LITELLM
+        assert config.swarm.llm.model_id == "gemini/gemini-2.5-flash"
+
+        # Should not raise for missing AWS credentials (GEMINI_API_KEY is present)
+        self.config_manager.validate_requirements("litellm")
+
+    @patch.dict(os.environ, {
+        "CYBER_AGENT_PROVIDER": "litellm",
+        "CYBER_AGENT_LLM_MODEL": "gemini/gemini-1.5-pro",
+        "CYBER_AGENT_EMBEDDING_MODEL": "gemini/text-embedding-004",
+        "GEMINI_API_KEY": "test-gemini-key",
+    }, clear=True)
+    def test_litellm_gemini_1_5_pro_configuration(self):
+        """Test LiteLLM configuration with Gemini 1.5 Pro."""
+        self.config_manager._config_cache = {}
+
+        config = self.config_manager.get_server_config("litellm")
+
+        # Verify LLM configuration
+        assert config.llm.model_id == "gemini/gemini-1.5-pro"
+        assert config.llm.provider == ModelProvider.LITELLM
+
+        # Verify memory and evaluation configs also use Gemini
+        assert config.memory.llm.model_id == "gemini/gemini-1.5-pro"
+        assert config.evaluation.llm.model_id == "gemini/gemini-1.5-pro"
+        assert config.swarm.llm.model_id == "gemini/gemini-1.5-pro"
+
+    @patch.dict(os.environ, {
+        "CYBER_AGENT_PROVIDER": "litellm",
+        "CYBER_AGENT_LLM_MODEL": "gemini/gemini-2.5-flash",
+        "CYBER_AGENT_EMBEDDING_MODEL": "bedrock/amazon.titan-embed-text-v2:0",
+        "GEMINI_API_KEY": "test-gemini-key",
+        "AWS_BEARER_TOKEN_BEDROCK": "test-token",
+        "AWS_REGION": "us-east-1",
+    }, clear=True)
+    def test_litellm_hybrid_gemini_llm_bedrock_embedding(self):
+        """Test hybrid configuration: Gemini LLM + Bedrock embeddings."""
+        self.config_manager._config_cache = {}
+
+        config = self.config_manager.get_server_config("litellm")
+
+        # Verify hybrid setup
+        assert config.llm.model_id == "gemini/gemini-2.5-flash"
+        assert config.embedding.model_id == "bedrock/amazon.titan-embed-text-v2:0"
+
+        # Both should use LITELLM provider
+        assert config.llm.provider == ModelProvider.LITELLM
+        assert config.embedding.provider == ModelProvider.LITELLM
+
+        # Should not raise (both credentials present)
+        self.config_manager.validate_requirements("litellm")
+
     def test_parameter_overrides(self):
         """Test that function parameters override configuration."""
         # This would require more complex override logic
