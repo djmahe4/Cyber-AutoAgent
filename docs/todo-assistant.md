@@ -386,7 +386,105 @@ pip install langchain-community pypdf faiss-cpu
 pip install chromadb
 ```
 
-## Roadmap
+## Programmatic Capability Manifest
+
+The MCP runtime exposes a **capability manifest** that LLM agents and sub-agents can
+query programmatically to discover available tools, their JSON schemas, and platform
+support — without needing to import any heavy optional dependencies.
+
+### Importing the manifest
+
+```python
+from modules.todo_assistant.mcp_server import get_capabilities, manifest_json
+
+# As a Python dict
+caps = get_capabilities()
+print(caps["schema_version"])   # "1.0"
+print(caps["current_platform"]) # "win" | "mac" | "linux"
+print(list(caps["tools"]))      # ['open_app', 'click_ui', 'type_text', 'read_screen', 'run_custom_script']
+
+# As a JSON string (e.g. to send over HTTP or to an agent)
+payload = manifest_json(indent=2)
+print(payload)
+```
+
+### Tool entry structure
+
+Each entry in `caps["tools"]` looks like:
+
+```json
+{
+  "open_app": {
+    "description": "Launch an application by name using platform-aware automation.",
+    "input_schema": { "type": "object", "properties": { ... } },
+    "platform_support": {
+      "win": { "primary": "pywinauto", "fallback": "subprocess" },
+      "mac": { "primary": "open",      "fallback": "subprocess" },
+      "linux": { "primary": "subprocess", "fallback": "subprocess" }
+    },
+    "current_platform_method": { "primary": "subprocess", "fallback": "subprocess" }
+  }
+}
+```
+
+### Pydantic tool schemas
+
+Each tool has a corresponding Pydantic model under
+`modules.todo_assistant.mcp_server.schemas` for validated, type-safe invocation:
+
+```python
+from modules.todo_assistant.mcp_server.schemas import OpenAppInput, ClickUIInput
+
+params = OpenAppInput(name="notepad", wait_time=3)
+# Raises ValidationError for bad inputs automatically
+```
+
+---
+
+## Skill Registry
+
+High-level **skills** compose one or more MCP tool calls into reusable,
+named workflows.  The module-level `default_registry` ships with one
+built-in example skill (`open_and_type`).
+
+### Using the built-in skill
+
+```python
+from modules.todo_assistant.skills import default_registry
+
+result = default_registry.run_skill("open_and_type", name="notepad", text="Hello!")
+print(result["success"])    # True / False
+print(result["open_result"])
+print(result["type_result"])
+```
+
+### Registering a custom skill
+
+```python
+from modules.todo_assistant.skills import SkillRegistry
+
+registry = SkillRegistry()
+
+@registry.register("save_and_close", description="Save a document and close the app")
+def save_and_close(app: str = "notepad") -> dict:
+    from modules.todo_assistant.mcp_server import click_ui
+    click_ui(label="Save")
+    click_ui(label="Close")
+    return {"done": True}
+
+result = registry.run_skill("save_and_close", app="notepad")
+```
+
+### Listing available skills
+
+```python
+for name, description in default_registry.list_skills().items():
+    print(f"{name}: {description}")
+```
+
+---
+
+
 
 Future enhancements:
 - [ ] LLM-powered task parsing (beyond regex)

@@ -34,8 +34,6 @@ dependencies = [
     "mem0ai",
     "boto3>=1.39.10",
     "botocore>=1.39.10",
-    "faiss-cpu",
-    "ollama>=0.1.0",
     "requests>=2.25.0",
     "opensearch-py",
     "opentelemetry-api",
@@ -46,12 +44,10 @@ dependencies = [
     "langfuse>=2.0.0",
     "langchain-aws>=0.2.0",
     "langchain-ollama>=0.2.0",
-    # To-Do Assistant dependencies
-    "streamlit>=1.28.0",
+    # To-Do Assistant core dependencies
     "pyautogui>=0.9.54",
     "pillow>=10.0.0",
-    "langchain-community>=0.0.20",
-    "pypdf>=3.17.0"
+    "pydantic>=2.0.0"
 ]
 
 [project.optional-dependencies]
@@ -63,6 +59,15 @@ dev = [
     "isort",
     "flake8",
     "mypy"
+]
+rag = [
+    "langchain-community>=0.0.20",
+    "faiss-cpu",
+    "pypdf>=3.17.0",
+    "ollama>=0.1.0"
+]
+ui = [
+    "streamlit>=1.28.0"
 ]
 
 [project.urls]

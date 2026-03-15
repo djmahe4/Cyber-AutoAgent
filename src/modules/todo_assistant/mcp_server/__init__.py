@@ -29,6 +29,8 @@ from .tools import (
 )
 from .platform_automation import PlatformAutomation
 from .action_logger import ActionLogger
+from .manifest import get_capabilities, manifest_json
+from .schemas import TOOL_SCHEMAS
 
 __all__ = [
     "MCPServer",
@@ -41,5 +43,8 @@ __all__ = [
     "get_automation",
     "get_logger",
     "PlatformAutomation",
-    "ActionLogger"
+    "ActionLogger",
+    "get_capabilities",
+    "manifest_json",
+    "TOOL_SCHEMAS",
 ]
