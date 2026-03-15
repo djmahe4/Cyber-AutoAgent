@@ -67,6 +67,14 @@
 
 The React-based terminal interface is now the **default UI**, providing interactive configuration, real-time operation monitoring, and guided setup in all deployment modes.
 
+> **Optional extras**: Heavy optional dependencies (RAG and UI) are no longer installed by default.
+> Install them as needed:
+> ```bash
+> pip install -e ".[rag]"   # LangChain, FAISS, pypdf, ollama
+> pip install -e ".[ui]"    # Streamlit frontend
+> pip install -e ".[rag,ui]" # Both
+> ```
+
 ### Local Development - Recommended
 
 ```bash

@@ -269,3 +269,6 @@ yarn-error.log*
 # Package files
 package-lock.json
 *.tar.gz
+
+# uv lock file (optional tool-specific)
+uv.lock
